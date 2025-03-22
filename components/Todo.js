@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 
 // Fetch the list of todos from the server
@@ -11,26 +12,39 @@ import { useState, useEffect } from "react";
 function TodoCard() {
 
     const [todos, setTodos] = useState([]);
-
+    const router = useRouter();
     // GET, POST, PUT, DELETE
     async function fetchTodos() {
         try {
-            const res = await fetch("http://localhost:3000/todo");
+            const token = localStorage.getItem("token") || "";
+            const res = await fetch("http://localhost:3001/todo", {
+                headers: { "x-auth-token": token }
+            });
             const data = await res.json();
-            console.log(data);
-            setTodos(data);
+            if (data.message) console.log(data.message);
+            else setTodos(data);
         } catch (e) {
             console.log(e);
         }
     }
 
-    useEffect(() => { fetchTodos() }, []);
+    function handleLogout(e) {
+        e.preventDefault();
+        localStorage.removeItem("token");
+        router.push("/login");
+    }
+
+    useEffect(() => {
+        fetchTodos();
+    }, []);
+
 
     return (
         <div className="flex flex-col justify-center items-center gap-3 bg-white p-5 border-2 border-indigo-500 w-[300px]">
             <h1 className="text-center text-indigo-500 font-bold text-3xl">REACT TODO</h1>
             <TodoList todos={todos} setTodos={setTodos} />
             <TodoForm todos={todos} setTodos={setTodos} />
+            <button onClick={handleLogout} className="w-full p-2 bg-red-400 text-white">Logout</button>
         </div>
     )
 }
@@ -48,9 +62,10 @@ function TodoItem({ todo, todos, setTodos }) {
         e.preventDefault();
 
         try {
-            const res = await fetch(`http://localhost:3000/todo/${todo._id}`, {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://localhost:3001/todo/${todo._id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "x-auth-token": token },
                 body: JSON.stringify({ done: !todo.done })
             })
             const data = await res.json();
@@ -67,7 +82,11 @@ function TodoItem({ todo, todos, setTodos }) {
     async function handleTodoDelete(e) {
         e.preventDefault();
         try {
-            const res = await fetch(`http://localhost:3000/todo/${todo._id}`, { method: "DELETE" });
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://localhost:3001/todo/${todo._id}`, {
+                method: "DELETE",
+                headers: { "x-auth-token": token }
+            });
             const data = await res.json();
             const newTodos = todos.filter((td) => td._id !== data._id);
             setTodos(newTodos);
@@ -94,9 +113,10 @@ function TodoForm({ todos, setTodos }) {
         e.preventDefault();
         const newTodo = { task: task };
         try {
-            const res = await fetch("http://localhost:3000/todo", {
+            const token = localStorage.getItem("token");
+            const res = await fetch("http://localhost:3001/todo", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "x-auth-token": token },
                 body: JSON.stringify(newTodo)
             })
             const data = await res.json();
